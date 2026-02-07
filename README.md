@@ -6,6 +6,7 @@ Technologies Used:
 Flutter, Dart, IoT, Cloud Computing (cellular-based communication with LTE failover; edge processing on ESP32-S3 with private ESP-NOW networking)
 
 =====================================================================
+
 Features:
 
 Invisible monitoring with no cameras or wearables
