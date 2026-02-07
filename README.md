@@ -1,5 +1,8 @@
 # Kinconnect
+=====================================================================
+
 KinConnect is a smart, non-intrusive senior safety and care monitoring system designed to provide families with peace of mind while preserving the dignity and privacy of elderly individuals. The system combines IoT-based sensor fusion, edge intelligence, and a mobile application to continuously monitor safety, detect anomalies, and enable rapid emergency response without the use of cameras or wearable devices.
+
 =====================================================================
 
 Technologies Used:
