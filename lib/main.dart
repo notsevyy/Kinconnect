@@ -1,14 +1,20 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/activity_screen.dart';
 import 'screens/safety_screen.dart';
 import 'screens/devices_screen.dart';
 import 'screens/splash_screen.dart';
-import 'services/mock_service.dart';
+import 'services/firebase_service.dart';
+import 'services/notification_service.dart';
 import 'theme/app_theme.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const KinConnectApp());
 }
 
@@ -21,30 +27,34 @@ class KinConnectApp extends StatelessWidget {
       title: 'KinConnect',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme,
+      navigatorKey: NotificationService().navigatorKey,
       home: const SplashScreen(),
     );
   }
 }
 
 class MainShell extends StatefulWidget {
-  const MainShell({super.key});
+  final int initialTab;
+  const MainShell({super.key, this.initialTab = 0});
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0;
+  late int _currentIndex;
 
   @override
   void initState() {
     super.initState();
-    MockService().startSimulation();
+    _currentIndex = widget.initialTab;
+    FirebaseService().startSimulation();
+    NotificationService().initialize();
   }
 
   @override
   void dispose() {
-    MockService().dispose();
+    FirebaseService().dispose();
     super.dispose();
   }
 

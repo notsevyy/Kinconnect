@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "800002913299",
+    "project_id": "kinconnectt",
+    "storage_bucket": "kinconnectt.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:800002913299:android:f4f6791d21f695f373bbe6",
+        "android_client_info": {
+          "package_name": "com.example.flutter_application_1"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAUMOLxUYjTjqzt_u69I7G_PSaB8vB5T5w"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

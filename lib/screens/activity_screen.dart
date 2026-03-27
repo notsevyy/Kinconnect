@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import '../models/activity_log.dart';
-import '../models/room.dart';
-import '../services/mock_service.dart';
+import '../services/firebase_service.dart';
 import '../theme/app_colors.dart';
 import '../widgets/activity_tile.dart';
 
@@ -14,9 +13,10 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
-  final _mock = MockService();
-  late List<ActivityLog> _logs;
-  StreamSubscription<List<Room>>? _roomSub;
+  final _svc = FirebaseService();
+  List<ActivityLog> _logs = [];
+  bool _isLoading = true;
+  StreamSubscription<List<ActivityLog>>? _activitySub;
   String? _selectedRoom;
 
   static const _roomFilters = [
@@ -30,15 +30,30 @@ class _ActivityScreenState extends State<ActivityScreen> {
   @override
   void initState() {
     super.initState();
-    _logs = _mock.activityLogs;
-    _roomSub = _mock.roomStream.listen((_) {
-      if (mounted) setState(() => _logs = _mock.activityLogs);
+    _logs = _svc.activityLogs;
+    if (_logs.isNotEmpty) {
+      _isLoading = false;
+    }
+
+    _activitySub = _svc.activityStream.listen((logs) {
+      if (mounted) {
+        setState(() {
+          _logs = logs;
+          _isLoading = false;
+        });
+      }
     });
+
+    _seedIfNeeded();
+  }
+
+  Future<void> _seedIfNeeded() async {
+    await _svc.seedAlertsIfEmpty();
   }
 
   @override
   void dispose() {
-    _roomSub?.cancel();
+    _activitySub?.cancel();
     super.dispose();
   }
 
@@ -49,7 +64,14 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final summary = _mock.dailyRoomSummary;
+    final summary = _svc.dailyRoomSummary;
+
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
     return Scaffold(
       body: SafeArea(
         child: Column(
@@ -70,7 +92,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
             ),
             const SizedBox(height: 12),
 
-            // Daily summary — color blocks
+            // Daily summary
             _DailySummary(summary: summary),
             const SizedBox(height: 4),
 
@@ -84,8 +106,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                 itemCount: _roomFilters.length,
                 itemBuilder: (_, i) {
                   final filter = _roomFilters[i];
-                  final isSelected =
-                      (_selectedRoom ?? 'All') == filter;
+                  final isSelected = (_selectedRoom ?? 'All') == filter;
                   final color = filter == 'All'
                       ? AppColors.charcoal
                       : AppColors.roomColor(filter);
@@ -103,8 +124,7 @@ class _ActivityScreenState extends State<ActivityScreen> {
                       child: Text(
                         filter,
                         style: TextStyle(
-                          color:
-                              isSelected ? Colors.white : color,
+                          color: isSelected ? Colors.white : color,
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                         ),
@@ -131,12 +151,40 @@ class _ActivityScreenState extends State<ActivityScreen> {
 
             // Timeline
             Expanded(
-              child: ListView.builder(
-                itemCount: _filteredLogs.length,
-                padding: const EdgeInsets.only(bottom: 16),
-                itemBuilder: (context, index) =>
-                    ActivityTile(log: _filteredLogs[index]),
-              ),
+              child: _filteredLogs.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.show_chart,
+                              size: 64,
+                              color: AppColors.textMuted.withAlpha(120)),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'No activity yet',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          const Text(
+                            'Activity will appear as sensors detect movement',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _filteredLogs.length,
+                      padding: const EdgeInsets.only(bottom: 16),
+                      itemBuilder: (context, index) =>
+                          ActivityTile(log: _filteredLogs[index]),
+                    ),
             ),
           ],
         ),
@@ -177,7 +225,6 @@ class _DailySummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Horizontal stacked bar
           ClipRRect(
             borderRadius: BorderRadius.circular(6),
             child: SizedBox(
@@ -198,7 +245,6 @@ class _DailySummary extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 10),
-          // Room labels
           Wrap(
             spacing: 14,
             runSpacing: 4,

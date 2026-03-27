@@ -6,6 +6,7 @@ import '../models/alert.dart';
 import '../models/activity_log.dart';
 import '../models/contact.dart';
 import '../models/device_node.dart';
+import '../models/medication.dart';
 
 class MockService {
   static final MockService _instance = MockService._internal();
@@ -117,6 +118,45 @@ class MockService {
     ),
   ];
 
+  final List<Medication> _medications = [
+    Medication(
+      id: 'med_1',
+      name: 'Lisinopril',
+      dosage: '10mg',
+      nextDue: DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+        8,
+        0,
+      ),
+    ),
+    Medication(
+      id: 'med_2',
+      name: 'Metformin',
+      dosage: '500mg',
+      nextDue: DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+        12,
+        0,
+      ),
+    ),
+    Medication(
+      id: 'med_3',
+      name: 'Aspirin',
+      dosage: '81mg',
+      nextDue: DateTime(
+        DateTime.now().year,
+        DateTime.now().month,
+        DateTime.now().day,
+        20,
+        0,
+      ),
+    ),
+  ];
+
   final HubStatus _hubStatus = HubStatus(
     networkMode: NetworkMode.lte,
     lteSignal: 78,
@@ -214,6 +254,7 @@ class MockService {
   List<Contact> get contacts =>
       List.unmodifiable(_contacts..sort((a, b) => a.escalationOrder.compareTo(b.escalationOrder)));
   List<DeviceNode> get deviceNodes => List.unmodifiable(_deviceNodes);
+  List<Medication> get medications => List.unmodifiable(_medications);
   HubStatus get hubStatus => _hubStatus;
 
   bool get hasActiveAlert =>
@@ -293,6 +334,17 @@ class MockService {
   void updateNodeSensitivity(String nodeId, double sensitivity) {
     final node = _deviceNodes.firstWhere((n) => n.id == nodeId);
     node.sensitivity = sensitivity;
+  }
+
+  void markMedicationTaken(String medicationId) {
+    final med = _medications.firstWhere((m) => m.id == medicationId);
+    med.taken = true;
+  }
+
+  Medication? get nextMedication {
+    final upcoming = _medications.where((m) => !m.taken).toList()
+      ..sort((a, b) => a.nextDue.compareTo(b.nextDue));
+    return upcoming.isEmpty ? null : upcoming.first;
   }
 
   void reorderContacts(List<Contact> reordered) {

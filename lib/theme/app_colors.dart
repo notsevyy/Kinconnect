@@ -4,7 +4,7 @@ class AppColors {
   AppColors._();
 
   // Background
-  static const Color background = Color(0xFFF5F4F0);
+  static const Color background = Color(0xFFFAF9F6);
   static const Color cardWhite = Color(0xFFFFFFFF);
 
   // Text

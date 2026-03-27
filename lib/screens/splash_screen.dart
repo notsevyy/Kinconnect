@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../theme/app_colors.dart';
+import 'elder_home_screen.dart';
 import 'onboarding_screen.dart';
 import 'login_screen.dart';
 import '../main.dart';
@@ -34,13 +35,17 @@ class _SplashScreenState extends State<SplashScreen>
     if (!mounted) return;
 
     final auth = AuthService();
-    final hasSession = auth.hasSession();
-    final hasOnboarded = auth.hasOnboarded();
 
     Widget destination;
-    if (hasSession) {
-      destination = const MainShell();
-    } else if (hasOnboarded) {
+    if (auth.hasSession()) {
+      await auth.loadProfile();
+      if (!mounted) return;
+      final mode = await auth.getUiMode();
+      if (!mounted) return;
+      destination = mode == 'elder'
+          ? const ElderHomeScreen()
+          : const MainShell();
+    } else if (auth.hasOnboarded()) {
       destination = const LoginScreen();
     } else {
       destination = const OnboardingScreen();
@@ -65,41 +70,57 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.charcoal,
-      body: Center(
-        child: FadeTransition(
-          opacity: _fadeIn,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: Image.asset(
-                  'assets/images/logo.png',
-                  width: 90,
-                  height: 90,
+      body: ClipRRect(
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background image
+            Image.asset(
+              'assets/images/LR.jpg',
+              fit: BoxFit.cover,
+            ),
+            // White overlay
+            Container(
+              color: Colors.white.withValues(alpha: 0.82),
+            ),
+            // Content
+            Center(
+              child: FadeTransition(
+                opacity: _fadeIn,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(20),
+                      child: Image.asset(
+                        'assets/images/logo.png',
+                        width: 90,
+                        height: 90,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const Text(
+                      'KinConnect',
+                      style: TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Peace of mind, always connected',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textMuted.withAlpha(200),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
-                'KinConnect',
-                style: TextStyle(
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
-                  color: Colors.white,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Peace of mind, always connected',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white.withAlpha(160),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

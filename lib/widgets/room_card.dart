@@ -7,6 +7,13 @@ class RoomCard extends StatelessWidget {
 
   const RoomCard({super.key, required this.room});
 
+  static const _roomImages = {
+    'Living Room': 'assets/images/LR.jpg',
+    'Bedroom': 'assets/images/BED.jpg',
+    'Bathroom': 'assets/images/BR.jpg',
+    'Kitchen': 'assets/images/KT.jpg',
+  };
+
   String _timeAgo() {
     final diff = DateTime.now().difference(room.lastMotion);
     if (diff.inSeconds < 60) return '${diff.inSeconds}s ago';
@@ -17,74 +24,98 @@ class RoomCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = AppColors.roomColor(room.name);
+    final imagePath = _roomImages[room.name];
+    const radius = BorderRadius.all(Radius.circular(20));
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  room.name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: -0.3,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      child: ClipRRect(
+        borderRadius: radius,
+        child: Stack(
+          children: [
+            // Background image
+            if (imagePath != null)
+              Positioned.fill(
+                child: Image.asset(
+                  imagePath,
+                  fit: BoxFit.cover,
                 ),
-                const SizedBox(height: 6),
-                Text(
-                  'Last motion: ${_timeAgo()}',
-                  style: TextStyle(
-                    color: Colors.white.withAlpha(180),
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    _StateBadge(state: room.state),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.sensors,
-                      color: Colors.white.withAlpha(120),
-                      size: 16,
+              ),
+            // Color overlay
+            Positioned.fill(
+              child: Container(
+                color: imagePath != null
+                    ? color.withValues(alpha: 0.72)
+                    : color,
+              ),
+            ),
+            // Card content
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          room.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Last motion: ${_timeAgo()}',
+                          style: TextStyle(
+                            color: Colors.white.withAlpha(180),
+                            fontSize: 13,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            _StateBadge(state: room.state),
+                            const SizedBox(width: 8),
+                            Icon(
+                              Icons.sensors,
+                              color: Colors.white.withAlpha(120),
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'mmWave',
+                              style: TextStyle(
+                                color: Colors.white.withAlpha(120),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      'mmWave',
-                      style: TextStyle(
-                        color: Colors.white.withAlpha(120),
-                        fontSize: 11,
-                      ),
+                  ),
+                  Container(
+                    width: 52,
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(30),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                  ],
-                ),
-              ],
+                    child: Icon(
+                      AppColors.roomIcon(room.icon),
+                      color: Colors.white,
+                      size: 28,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: Colors.white.withAlpha(30),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              AppColors.roomIcon(room.icon),
-              color: Colors.white,
-              size: 28,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
-import '../services/mock_service.dart';
+import '../services/firebase_service.dart';
 import '../theme/app_colors.dart';
+import '../main.dart';
+import 'elder_home_screen.dart';
 import 'login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -16,6 +18,57 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _notifyAlerts = true;
   bool _notifyActivity = true;
   bool _notifyBattery = true;
+  String _currentMode = 'caregiver';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMode();
+  }
+
+  Future<void> _loadMode() async {
+    final mode = await _auth.getUiMode();
+    if (mounted) {
+      setState(() => _currentMode = mode ?? 'caregiver');
+    }
+  }
+
+  void _switchMode() {
+    final targetMode = _currentMode == 'caregiver' ? 'elder' : 'caregiver';
+    final targetLabel = targetMode == 'elder' ? 'Elder View' : 'Caregiver View';
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('Switch Mode'),
+        content: Text('Switch to $targetLabel? The app will restart.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              await _auth.setUiMode(targetMode);
+              if (!mounted) return;
+              final Widget destination = targetMode == 'elder'
+                  ? const ElderHomeScreen()
+                  : const MainShell();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => destination),
+                (_) => false,
+              );
+            },
+            child: Text(
+              'Switch',
+              style: TextStyle(color: AppColors.primary),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _signOut() {
     showDialog(
@@ -30,10 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(ctx);
-              _auth.signOut();
-              MockService().dispose();
+              FirebaseService().dispose();
+              await _auth.signOut();
+              if (!mounted) return;
               Navigator.of(context).pushAndRemoveUntil(
                 MaterialPageRoute(builder: (_) => const LoginScreen()),
                 (_) => false,
@@ -69,16 +123,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
-                _auth.saveUserInfo(
-                  name: name,
-                  seniorName: _auth.seniorName ?? '',
-                );
-                setState(() {});
+                await _auth.updateName(name);
+                if (mounted) setState(() {});
               }
-              Navigator.pop(ctx);
+              if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('Save'),
           ),
@@ -107,16 +158,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: const Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               final name = controller.text.trim();
               if (name.isNotEmpty) {
-                _auth.saveUserInfo(
-                  name: _auth.userName ?? '',
-                  seniorName: name,
-                );
-                setState(() {});
+                await _auth.updateSeniorName(name);
+                if (mounted) setState(() {});
               }
-              Navigator.pop(ctx);
+              if (ctx.mounted) Navigator.pop(ctx);
             },
             child: const Text('Save'),
           ),
@@ -203,6 +251,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             title: 'Senior\'s Name',
             subtitle: seniorName,
             onTap: _editSeniorName,
+          ),
+          const SizedBox(height: 8),
+          _settingsTile(
+            icon: _currentMode == 'elder'
+                ? Icons.dashboard_outlined
+                : Icons.person_outline,
+            title: _currentMode == 'elder'
+                ? 'Switch to Caregiver View'
+                : 'Switch to Elder View',
+            onTap: _switchMode,
           ),
           const SizedBox(height: 24),
 
