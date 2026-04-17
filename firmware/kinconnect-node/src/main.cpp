@@ -3,10 +3,7 @@
 #include <FirebaseESP32.h>
 #include <ld2410.h>
 
-#define WIFI_SSID       "ESPTEST"
-#define WIFI_PASS       "12345678"
-#define FIREBASE_URL    "https://kcnct-6c4e4-default-rtdb.firebaseio.com"
-#define FIREBASE_SECRET "riKIVmJSQiw3v30UmPmra4OIkzinDfCqhfZIr7ws"
+#include "secrets.h"
 
 // PIR
 #define PIR_PIN         12

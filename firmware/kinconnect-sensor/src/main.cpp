@@ -54,11 +54,8 @@ void setup() {
 
   Serial2.begin(256000, SERIAL_8N1, MMWAVE_RX_PIN, MMWAVE_TX_PIN);
   delay(500);
-  if (radar.begin(Serial2)) {
-    Serial.println("LD2410C: OK");
-  } else {
-    Serial.println("LD2410C: UART not connected — using OUT pin only");
-  }
+  radar.begin(Serial2);
+  Serial.printf("LD2410C: UART TX=GPIO%d RX=GPIO%d @ 256000 baud\n", MMWAVE_TX_PIN, MMWAVE_RX_PIN);
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
