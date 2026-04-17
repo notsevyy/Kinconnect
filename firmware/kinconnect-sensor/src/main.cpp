@@ -2,7 +2,6 @@
 #include <WiFi.h>
 #include <FirebaseESP32.h>
 #include <ld2410.h>
-#include <stdlib.h>
 
 #define WIFI_SSID       "ESPTEST"
 #define WIFI_PASS       "12345678"
@@ -33,31 +32,12 @@ static const unsigned long SEND_INTERVAL = 1500;
 static unsigned long lastSensitivityPoll = 0;
 static const unsigned long SENS_POLL_INTERVAL = 5000;
 
-// Sensitivity: 0-100, default 50 → alarm after ~32s
 static int  sensitivity      = 50;
 static unsigned long alarmThresholdMs = 32000;
 
-// Sleep mode
 static bool sleepModeActive = false;
-
-// Demo states
-// '1' = movement: PIR on, presence on, movement on → PIR drops 3s, movement drops 6s
-// '2' = stationary: presence only
-// '3' = clear: everything off
-// '4' = breathing: presence on, movement on, PIR off
-static int  demoState  = 0;
-static unsigned long stateStart = 0;
-
-// Alarm
 static unsigned long stillSince = 0;
 static bool alarmActive = false;
-
-// LDR fake
-// 5 = dark ~29% (base 1188), 6 = bright ~58-59% (base 2390)
-static float fakeLightCurrent  = 3700;
-static float fakeLightTarget   = 3700;
-static float fakeLightBase     = 3700;
-static unsigned long lastJitter = 0;
 
 void updateAlarmThreshold(int sens) {
   float delaySec = 60.0f - (sens / 100.0f) * 55.0f;
@@ -74,7 +54,11 @@ void setup() {
 
   Serial2.begin(256000, SERIAL_8N1, MMWAVE_RX_PIN, MMWAVE_TX_PIN);
   delay(500);
-  radar.begin(Serial2);
+  if (radar.begin(Serial2)) {
+    Serial.println("LD2410C: OK");
+  } else {
+    Serial.println("LD2410C: UART not connected — using OUT pin only");
+  }
 
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASS);
@@ -106,51 +90,16 @@ void setup() {
 void loop() {
   radar.read();
 
-  if (Serial.available()) {
-    char key = Serial.read();
-    if (key == '1' || key == '2' || key == '3' || key == '4') {
-      demoState  = key - '0';
-      stateStart = millis();
-    }
-    if (key == '5') { fakeLightBase = 3000; fakeLightTarget = 3000; } // ~73% lamp/dim
-    if (key == '6') { fakeLightBase = 3700; fakeLightTarget = 3700; } // ~90% bright room
-    if (key == '7') { fakeLightBase = 200;  fakeLightTarget = 200;  } // ~5% dark, lights off
-  }
+  unsigned long now = millis();
 
-  unsigned long now     = millis();
-  unsigned long elapsed = now - stateStart;
+  bool pir      = digitalRead(PIR_PIN) == HIGH;
+  bool mmwOut   = digitalRead(MMWAVE_OUT_PIN) == HIGH;
+  bool presence = mmwOut || radar.presenceDetected();
+  bool movement = radar.movingTargetDetected();
 
-  bool pir      = false;
-  bool presence = false;
-  bool movement = false;
+  int rawLight   = analogRead(LDR_PIN);
+  float lightPct = (rawLight / 4095.0f) * 100.0f;
 
-  if (demoState == 1) {
-    pir      = elapsed < 3000;
-    movement = elapsed < 6000;
-    presence = true;
-  } else if (demoState == 2) {
-    presence = true;
-  } else if (demoState == 4) {
-    presence = true;
-    movement = true;
-  }
-  // demoState == 3: all false
-
-  if (digitalRead(PIR_PIN) == HIGH) pir = true;
-
-  // Jitter: nudge target slightly every 500ms to simulate real sensor noise
-  if (now - lastJitter >= 500) {
-    lastJitter = now;
-    float jitter = (random(-40, 40));
-    fakeLightTarget = fakeLightBase + jitter;
-  }
-  // Ramp current toward target
-  float step = (fakeLightTarget - fakeLightCurrent) * 0.1f;
-  if (abs(fakeLightTarget - fakeLightCurrent) < 2.0f) fakeLightCurrent = fakeLightTarget;
-  else fakeLightCurrent += step;
-
-  // Alarm logic — double threshold in dark (lights off)
-  float lightPct = (fakeLightCurrent / 4095.0f) * 100.0f;
   unsigned long effectiveThreshold = (lightPct < 30.0f) ? alarmThresholdMs * 2 : alarmThresholdMs;
 
   if (sleepModeActive || !presence || movement) {
@@ -161,7 +110,6 @@ void loop() {
     if (now - stillSince >= effectiveThreshold) alarmActive = true;
   }
 
-  // Poll sensitivity and sleep mode every 5s
   if (WiFi.status() == WL_CONNECTED && now - lastSensitivityPoll >= SENS_POLL_INTERVAL) {
     lastSensitivityPoll = now;
     if (Firebase.getInt(fbdoSens, "/nodes/node_01/sensitivity")) {
@@ -180,9 +128,8 @@ void loop() {
   if (now - lastSendTime >= SEND_INTERVAL) {
     lastSendTime = now;
 
-    float light = (fakeLightCurrent / 4095.0f) * 100.0f;
-    Serial.printf("PIR=%d  mmWave presence=%d  movement=%d  alarm=%d  sens=%d  light=%.2f%%\n",
-      pir, presence, movement, alarmActive, sensitivity, light);
+    Serial.printf("PIR=%d  presence=%d  movement=%d  alarm=%d  sens=%d  light=%.2f%%\n",
+      pir, presence, movement, alarmActive, sensitivity, lightPct);
 
     if (WiFi.status() == WL_CONNECTED) {
       FirebaseJson json;
@@ -190,7 +137,7 @@ void loop() {
       json.set("pirDetected", pir);
       json.set("mmwavePresence", presence);
       json.set("mmwaveMovement", movement);
-      json.set("lightLevel", (float)((int)(light * 100)) / 100.0f);
+      json.set("lightLevel", (float)((int)(lightPct * 100)) / 100.0f);
       json.set("alarmActive", alarmActive);
       json.set("timestamp", (long)millis());
 
